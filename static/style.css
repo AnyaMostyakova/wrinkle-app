@@ -1,0 +1,223 @@
+body{
+
+    background:#0b0f19;
+    color:white;
+    font-family:Arial,Helvetica,sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+
+}
+
+.container{
+
+    width:900px;
+    text-align:center;
+
+}
+
+h1{
+
+    font-size:36px;
+    margin-bottom:5px;
+
+}
+
+.subtitle{
+
+    color:#9ca3af;
+    margin-bottom:35px;
+
+}
+
+.upload-area{
+
+    display:flex;
+    justify-content:center;
+    margin-bottom:20px;
+
+}
+
+.upload-button{
+
+    background:#111827;
+    border:2px dashed #374151;
+    border-radius:14px;
+    padding:40px;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    transition:0.3s;
+
+}
+
+.upload-button:hover{
+
+    border-color:#2563eb;
+    background:#0f172a;
+
+}
+
+.upload-button span{
+
+    font-size:16px;
+
+}
+
+.analyze-btn{
+
+    margin-top:10px;
+    padding:12px 30px;
+    background:#1f2937;
+    border:none;
+    border-radius:10px;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+    transition:0.3s;
+
+}
+
+.analyze-btn:hover{
+
+    background:#2563eb;
+
+}
+
+.loading{
+
+    margin-top:20px;
+    color:#9ca3af;
+
+}
+
+.hidden{
+
+    display:none;
+
+}
+
+.images{
+
+    display:flex;
+    gap:20px;
+    justify-content:center;
+    margin-top:40px;
+
+}
+
+.image-box{
+
+    background:#111827;
+    padding:15px;
+    border-radius:12px;
+
+}
+
+.image-box img{
+
+    width:350px;
+    border-radius:8px;
+
+}
+
+.stats{
+
+    margin-top:35px;
+    background:#111827;
+    padding:25px;
+    border-radius:12px;
+
+}
+
+.progress{
+
+    background:#374151;
+    height:22px;
+    border-radius:12px;
+    overflow:hidden;
+
+}
+
+#wrinkleBar{
+
+    height:100%;
+    background:#2563eb;
+    width:0%;
+    transition:1s;
+
+}
+
+#wrinklePercent{
+
+    margin-top:10px;
+    font-size:18px;
+
+}
+.preview{
+
+    margin-top:20px;
+
+}
+
+.preview img{
+
+    width:200px;
+    border-radius:10px;
+    margin-top:10px;
+
+}
+
+.analyze-btn:disabled{
+
+    background:#374151;
+    cursor:not-allowed;
+    opacity:0.5;
+
+}
+.result-buttons{
+
+    margin-top:25px;
+    display:flex;
+    justify-content:center;
+    gap:15px;
+
+}
+
+.new-btn{
+
+    background:#374151;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    color:white;
+    cursor:pointer;
+
+}
+
+.new-btn:hover{
+
+    background:#4b5563;
+
+}
+
+.save-btn{
+
+    background:#2563eb;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    color:white;
+    cursor:pointer;
+
+}
+
+.save-btn:hover{
+
+    background:#1d4ed8;
+
+}

@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AI Анализ кожи - С камеры</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* Анимированный фон */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="10" cy="10" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="20" r="3" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="85" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      font-size: 1.1rem;
+    }
+
+    /* Mode Switch */
+    .mode-switch {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 30px;
+      @media (max-width: 400px){
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    .mode-btn {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 12px 30px;
+      border-radius: 50px;
+      text-decoration: none;
+      color: white;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      border-color: transparent;
+    }
+
+    .mode-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Camera Card */
+    .camera-card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 30px;
+      padding: 25px;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    #videoElement {
+      width: 100%;
+      height: auto;
+      transform: scaleX(-1);
+      display: block;
+    }
+
+    #overlayCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* Status Message */
+    .status {
+      margin: 20px auto;
+      padding: 15px 20px;
+      border-radius: 15px;
+      font-weight: 600;
+      max-width: 500px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .status.success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status.warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status.info {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* Buttons */
+    .controls {
+      margin-top: 25px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button, .back-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      padding: 12px 30px;
+      border-radius: 50px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    button:hover:not(:disabled), .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    button:disabled {
+      background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .back-btn {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Preview Section */
+    .preview-section, .result {
+      margin-top: 30px;
+      display: none;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    .preview-section.active, .result.active {
+      display: block;
+    }
+
+    .preview-card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 30px;
+      padding: 25px;
+      text-align: center;
+    }
+
+    .preview-image {
+      max-width: 300px;
+      border-radius: 20px;
+      margin: 20px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    /* Results */
+    .images {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+
+    .image-box {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      border-radius: 20px;
+      flex: 1;
+      min-width: 250px;
+      transition: transform 0.3s ease;
+    }
+
+    .image-box:hover {
+      transform: translateY(-5px);
+    }
+
+    .image-box p {
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .image-box img {
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .stats {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 25px;
+      border-radius: 20px;
+      margin-top: 20px;
+    }
+
+    .stats h2 {
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    .progress {
+      background: rgba(0,0,0,0.3);
+      height: 30px;
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    #wrinkleBar {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #34d399);
+      width: 0%;
+      transition: width 1s ease-out;
+      border-radius: 15px;
+    }
+
+    .loading {
+      text-align: center;
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      color: white;
+      font-size: 1.1rem;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .mode-btn {
+        padding: 8px 20px;
+        font-size: 14px;
+      }
+
+      button, .back-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+
+      #overlayCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>✨ AI Анализ кожи</h1>
+    <p class="subtitle">Профессиональная диагностика состояния кожи</p>
+  </div>
+
+  <div class="mode-switch">
+    <a href="/camera" class="mode-btn active">📸 Сделать фото</a>
+    <a href="/" class="mode-btn">📁 Загрузить фото</a>
+  </div>
+
+  <div class="camera-card">
+    <div class="camera-container">
+      <video id="videoElement" autoplay playsinline></video>
+      <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <div id="statusMessage" class="status info">
+      🔍 Загрузка системы распознавания...
+    </div>
+
+    <div class="controls">
+      <button id="captureBtn" disabled>📸 Сделать снимок</button>
+      <a href="/" class="back-btn">← На главную</a>
+    </div>
+  </div>
+
+  <div id="previewSection" class="preview-section">
+    <div class="preview-card">
+      <h3 style="color: white;">📷 Предпросмотр снимка</h3>
+      <img id="previewImage" class="preview-image">
+      <div class="controls">
+        <button id="analyzeBtn">🔬 Начать анализ</button>
+        <button id="retakeBtn" class="back-btn">📷 Сделать новый</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="loading hidden">
+    <div>⏳ Анализ изображения...</div>
+    <div style="font-size: 0.9rem; margin-top: 10px;">Пожалуйста, подождите</div>
+  </div>
+
+  <div id="result" class="result">
+    <div class="images">
+      <div class="image-box">
+        <p>📷 Оригинальное фото</p>
+        <img id="originalImage">
+      </div>
+      <div class="image-box">
+        <p>🔍 Детекция морщин</p>
+        <img id="resultImage">
+      </div>
+    </div>
+    <div class="stats">
+      <h2>📊 Результаты анализа</h2>
+      <div class="progress">
+        <div id="wrinkleBar"></div>
+      </div>
+      <p id="wrinklePercent" style="color: white; font-size: 1.2rem;"></p>
+    </div>
+    <div class="controls">
+      <button onclick="location.reload()">🔄 Новый анализ</button>
+      <button id="saveBtn" class="back-btn">💾 Сохранить результат</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', init);
+
+  let video = null;
+  let canvas = null;
+  let ctx = null;
+  let faceMesh = null;
+  let stream = null;
+  let capturedImageBlob = null;
+  let animationId = null;
+  let isModelLoaded = false;
+
+  const VIDEO_WIDTH = 640;
+  const VIDEO_HEIGHT = 480;
+
+  const TARGET_ELLIPSE = {
+    centerX: VIDEO_WIDTH / 2,
+    centerY: VIDEO_HEIGHT / 2,
+    radiusX: 150,
+    radiusY: 180
+  };
+
+  const FACE_OVAL = [
+    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+    397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+    172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+  ];
+
+  const LEFT_EYE_INDICES = [33, 133, 157, 158, 159, 160, 161, 173];
+  const RIGHT_EYE_INDICES = [362, 263, 387, 386, 385, 384, 398, 466];
+  const NOSE_TIP = [1, 2, 98, 327];
+  const LIPS_INDICES = [61, 291, 13, 14, 17, 18, 78, 308];
+
+  async function init() {
+    await initCamera();
+    initFaceMesh();
+  }
+
+  async function initCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: VIDEO_WIDTH },
+          height: { ideal: VIDEO_HEIGHT },
+          facingMode: 'user'
+        }
+      });
+
+      video = document.getElementById('videoElement');
+      canvas = document.getElementById('overlayCanvas');
+      ctx = canvas.getContext('2d');
+
+      video.srcObject = stream;
+
+      video.onloadedmetadata = () => {
+        video.play();
+
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+          // 📱 МОБИЛКА — реальные размеры видео
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        } else {
+          // 💻 ДЕСКТОП — как было
+          canvas.width = VIDEO_WIDTH;
+          canvas.height = VIDEO_HEIGHT;
+        }
+
+        startDetectionLoop();
+        updateStatus('ready', '✅ Камера готова', 'info');
+      };
+    } catch (err) {
+      updateStatus('error', '❌ Нет доступа к камере', 'error');
+    }
+  }
+
+  function initFaceMesh() {
+    faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(onResults);
+    updateStatus('loading', '🔄 Загрузка нейросети...', 'info');
+  }
+
+  function startDetectionLoop() {
+    async function detect() {
+      if (video && video.readyState === video.HAVE_ENOUGH_DATA && faceMesh) {
+        try {
+          await faceMesh.send({ image: video });
+        } catch (err) {}
+      }
+      animationId = requestAnimationFrame(detect);
+    }
+    detect();
+  }
+
+  function onResults(results) {
+    if (!ctx || !canvas) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawTargetEllipse();
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+
+      drawFaceOval(landmarks);
+      drawEyes(landmarks);
+      drawNose(landmarks);
+      drawLips(landmarks);
+
+      const positionStatus = checkFacePosition(landmarks);
+      const captureBtn = document.getElementById('captureBtn');
+
+      if (positionStatus.isGood) {
+        captureBtn.disabled = false;
+        updateStatus('good', positionStatus.message, 'success');
+      } else {
+        captureBtn.disabled = true;
+        updateStatus('warning', positionStatus.message, 'warning');
+      }
+
+      if (!isModelLoaded) {
+        isModelLoaded = true;
+        updateStatus('ready', '✅ Нейросеть готова!', 'success');
+      }
+    } else {
+      document.getElementById('captureBtn').disabled = true;
+      if (isModelLoaded) {
+        updateStatus('warning', '⚠️ Лицо не обнаружено', 'warning');
+      }
+    }
+  }
+
+  function drawTargetEllipse() {
+    const isMobile = window.innerWidth <= 768;
+
+    const centerX = isMobile ? canvas.width / 2 : TARGET_ELLIPSE.centerX;
+    const centerY = isMobile ? canvas.height / 2 : TARGET_ELLIPSE.centerY;
+
+    // 📱 Делаем овал более пропорциональным для лица
+    let radiusX, radiusY;
+
+    if (isMobile) {
+      // На мобилке - ширина овала ~45% от ширины экрана, высота ~55%
+      radiusX = canvas.width * 0.32;  // было 0.25 - уменьшил
+      radiusY = canvas.height * 0.38; // было 0.35 - уменьшил
+    } else {
+      // На десктопе - более естественные пропорции
+      radiusX = 150;  // было 150
+      radiusY = 180;  // было 180
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 5]);
+
+    ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+    ctx.fill();
+    ctx.setLineDash([]);
+  }
+
+  function drawFaceOval(landmarks) {
+    const isMobile = window.innerWidth <= 768;
+    const width = isMobile ? canvas.width : VIDEO_WIDTH;
+    const height = isMobile ? canvas.height : VIDEO_HEIGHT;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2;
+
+    for (let i = 0; i < FACE_OVAL.length; i++) {
+      const point = landmarks[FACE_OVAL[i]];
+      if (point) {
+        const x = point.x * width;
+        const y = point.y * height;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  function drawEyes(landmarks) {
+    const isMobile = window.innerWidth <= 768;
+    const width = isMobile ? canvas.width : VIDEO_WIDTH;
+    const height = isMobile ? canvas.height : VIDEO_HEIGHT;
+
+    ctx.fillStyle = '#f59e0b';
+    [...LEFT_EYE_INDICES, ...RIGHT_EYE_INDICES].forEach(idx => {
+      const point = landmarks[idx];
+      if (point) {
+        const x = point.x * width;
+        const y = point.y * height;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawNose(landmarks) {
+    const isMobile = window.innerWidth <= 768;
+    const width = isMobile ? canvas.width : VIDEO_WIDTH;
+    const height = isMobile ? canvas.height : VIDEO_HEIGHT;
+
+    ctx.fillStyle = '#ef4444';
+    NOSE_TIP.forEach(idx => {
+      const point = landmarks[idx];
+      if (point) {
+        const x = point.x * width;
+        const y = point.y * height;
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawLips(landmarks) {
+    const isMobile = window.innerWidth <= 768;
+    const width = isMobile ? canvas.width : VIDEO_WIDTH;
+    const height = isMobile ? canvas.height : VIDEO_HEIGHT;
+
+    ctx.fillStyle = '#ec489a';
+    LIPS_INDICES.forEach(idx => {
+      const point = landmarks[idx];
+      if (point) {
+        const x = point.x * width;
+        const y = point.y * height;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    });
+  }
+
+  function checkFacePosition(landmarks) {
+    const isMobile = window.innerWidth <= 768;
+    const width = isMobile ? canvas.width : VIDEO_WIDTH;
+    const height = isMobile ? canvas.height : VIDEO_HEIGHT;
+
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    const nose = landmarks[1];
+    const chin = landmarks[152];
+
+    if (!leftEye || !rightEye || !nose || !chin) {
+      return { isGood: false, message: '⚠️ Не удалось определить положение' };
+    }
+
+    const eyeYDiff = Math.abs(leftEye.y - rightEye.y);
+    if (eyeYDiff > 0.03) {
+      return { isGood: false, message: '🔄 Поверните голову прямо' };
+    }
+
+    const faceHeight = Math.abs(chin.y - nose.y);
+    if (faceHeight < 0.22) {
+      return { isGood: false, message: '📱 Приблизьтесь к камере' };
+    }
+    if (faceHeight > 0.4) {
+      return { isGood: false, message: '📱 Отодвиньтесь от камеры' };
+    }
+
+    const faceCenterX = (leftEye.x + rightEye.x) / 2;
+    if (Math.abs(faceCenterX - 0.5) > 0.1) {
+      return { isGood: false, message: '⬅️ Расположите лицо по центру ➡️' };
+    }
+
+    const faceCenterY = nose.y;
+    if (Math.abs(faceCenterY - 0.5) > 0.1) {
+      return { isGood: false, message: '⬆️ Расположите лицо по центру ⬇️' };
+    }
+
+    return { isGood: true, message: '✅ Идеально! Можно делать снимок' };
+  }
+
+  function updateStatus(code, message, type) {
+    const statusDiv = document.getElementById('statusMessage');
+    statusDiv.textContent = message;
+    statusDiv.className = `status ${type}`;
+  }
+
+  async function capturePhoto() {
+    if (!video || video.videoWidth === 0) {
+      updateStatus('error', 'Камера не готова', 'error');
+      return;
+    }
+
+    const isMobile = window.innerWidth <= 768;
+    const captureWidth = isMobile ? canvas.width : VIDEO_WIDTH;
+    const captureHeight = isMobile ? canvas.height : VIDEO_HEIGHT;
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = captureWidth;
+    tempCanvas.height = captureHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    tempCtx.save();
+    tempCtx.translate(captureWidth, 0);
+    tempCtx.scale(-1, 1);
+    tempCtx.drawImage(video, 0, 0, captureWidth, captureHeight);
+    tempCtx.restore();
+
+    capturedImageBlob = await new Promise(resolve => {
+      tempCanvas.toBlob(resolve, 'image/jpeg', 0.95);
+    });
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('previewImage').src = e.target.result;
+      document.getElementById('previewSection').classList.add('active');
+      document.querySelector('.camera-card').style.display = 'none';
+      updateStatus('captured', '📸 Снимок сохранен!', 'success');
+    };
+    reader.readAsDataURL(capturedImageBlob);
+  }
+
+  async function analyzePhoto() {
+    if (!capturedImageBlob) {
+      alert('Сначала сделайте снимок');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', capturedImageBlob, 'photo.jpg');
+
+    document.getElementById('loading').classList.remove('hidden');
+
+    try {
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('result').classList.add('active');
+
+      document.getElementById('originalImage').src = data.original;
+      document.getElementById('resultImage').src = data.result;
+      document.getElementById('wrinklePercent').innerHTML =
+              `📊 Уровень морщин: <strong style="color: #10b981; font-size: 1.5rem;">${data.wrinkle_percent.toFixed(2)}%</strong>`;
+      document.getElementById('wrinkleBar').style.width = data.wrinkle_percent + '%';
+    } catch (err) {
+      alert('Ошибка при анализе');
+      document.getElementById('loading').classList.add('hidden');
+    }
+  }
+
+  function retakePhoto() {
+    capturedImageBlob = null;
+    document.getElementById('previewSection').classList.remove('active');
+    document.querySelector('.camera-card').style.display = 'block';
+    document.getElementById('result').classList.remove('active');
+    updateStatus('ready', '📸 Расположите лицо в зеленом овале', 'info');
+  }
+
+  function downloadResult() {
+    const link = document.createElement('a');
+    link.download = 'skin_analysis_result.png';
+    link.href = document.getElementById('resultImage').src;
+    link.click();
+  }
+
+  document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+  document.getElementById('analyzeBtn').addEventListener('click', analyzePhoto);
+  document.getElementById('retakeBtn').addEventListener('click', retakePhoto);
+  document.getElementById('saveBtn').addEventListener('click', downloadResult);
+
+  window.addEventListener('beforeunload', () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+    }
+  });
+</script>
+</body>
+</html>

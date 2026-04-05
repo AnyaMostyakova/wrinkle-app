@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI Анализ кожи - Загрузка фото</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        /* Убираем горизонтальный скролл */
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: clamp(1.6rem, 6vw, 2.5rem);
+            background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: clamp(0.9rem, 4vw, 1.1rem);
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: clamp(0.8rem, 3.5vw, 1rem);
+            text-align: center;
+            flex: 0 1 auto;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .upload-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .upload-area {
+            margin: 20px 0;
+        }
+
+        .upload-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px 30px;
+            border-radius: 60px;
+            cursor: pointer;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .upload-button span {
+            font-size: clamp(0.9rem, 4vw, 1rem);
+            font-weight: 600;
+            color: white;
+        }
+
+        .preview {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 20px;
+        }
+
+        .preview p {
+            color: white;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: clamp(0.85rem, 3.8vw, 1rem);
+        }
+
+        .preview img {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            padding: 14px 30px;
+            border-radius: 50px;
+            color: white;
+            font-size: clamp(0.9rem, 4vw, 1.1rem);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: auto;
+            min-width: 180px;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .analyze-btn:disabled {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .images {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .image-box {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 20px;
+            flex: 1;
+            min-width: 200px;
+            transition: transform 0.3s ease;
+        }
+
+        .image-box p {
+            color: white;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: clamp(0.8rem, 3.5vw, 1rem);
+        }
+
+        .image-box img {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .stats {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+        }
+
+        .stats h2 {
+            color: white;
+            margin-bottom: 16px;
+            font-size: clamp(1.2rem, 5vw, 1.5rem);
+        }
+
+        .progress {
+            background: rgba(0,0,0,0.3);
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        #wrinkleBar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            width: 0%;
+            transition: width 1s ease-out;
+        }
+
+        .loading {
+            text-align: center;
+            margin-top: 24px;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            color: white;
+            font-size: clamp(0.9rem, 4vw, 1rem);
+        }
+
+        .result-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .new-btn, .save-btn {
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: clamp(0.85rem, 4vw, 1rem);
+        }
+
+        .new-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .new-btn:hover, .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Мобильные улучшения */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .upload-card {
+                padding: 24px 16px;
+            }
+
+            .upload-button {
+                padding: 16px 24px;
+            }
+
+            .analyze-btn {
+                padding: 12px 24px;
+                min-width: 160px;
+            }
+
+            .mode-switch {
+                gap: 8px;
+            }
+
+            .mode-btn {
+                padding: 8px 16px;
+            }
+
+            .image-box {
+                min-width: 150px;
+            }
+        }
+        /* ===== MOBILE FIX FOR UPLOAD PAGE ===== */
+        @media (max-width: 768px) {
+
+            body {
+                padding: 15px;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            /* ХЕДЕР МЕНЬШЕ */
+            h1 {
+                font-size: 1.6rem;
+                margin-bottom: 10px;
+            }
+
+            .subtitle {
+                font-size: 0.9rem;
+            }
+
+            /* ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ В КОЛОНКУ */
+            .mode-switch {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .mode-btn {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            /* КАРТОЧКА */
+            .upload-card {
+                padding: 20px 15px;
+                border-radius: 20px;
+            }
+
+            /* КНОПКА ЗАГРУЗКИ */
+            .upload-button {
+                width: 100%;
+                padding: 18px 20px;
+                gap: 10px;
+            }
+
+            .upload-button span {
+                font-size: 1rem;
+                text-align: center;
+            }
+
+            /* ПРЕВЬЮ */
+            .preview {
+                padding: 15px;
+            }
+
+            .preview img {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            /* КНОПКА АНАЛИЗА */
+            .analyze-btn {
+                width: 100%;
+                font-size: 16px;
+                padding: 14px;
+            }
+
+            /* РЕЗУЛЬТАТЫ В КОЛОНКУ */
+            .images {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .image-box {
+                min-width: 100%;
+            }
+
+            /* КНОПКИ ВНИЗУ */
+            .result-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .new-btn, .save-btn {
+                width: 100%;
+            }
+
+            /* ПРОГРЕСС */
+            .progress {
+                height: 20px;
+            }
+
+            #wrinklePercent {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>✨ AI Анализ кожи</h1>
+        <p class="subtitle">Загрузите фото для профессиональной диагностики</p>
+    </div>
+
+    <div class="mode-switch">
+        <a href="/camera" class="mode-btn">📸 Сделать фото</a>
+        <a href="/" class="mode-btn active">📁 Загрузить фото</a>
+    </div>
+
+    <div class="upload-card">
+        <div class="upload-area">
+            <label for="fileInput" class="upload-button">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 16V4M12 4L7 9M12 4L17 9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M20 16V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Выберите фото для анализа</span>
+            </label>
+            <input type="file" id="fileInput" hidden accept="image/*">
+        </div>
+
+        <div class="preview hidden" id="previewBox">
+            <p>📷 Выбранное изображение:</p>
+            <img id="previewImage">
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" disabled>
+            🔬 Начать анализ
+        </button>
+    </div>
+
+    <div id="loading" class="loading hidden">
+        <div>⏳ Анализ изображения...</div>
+        <div style="font-size: 0.9rem; margin-top: 10px;">Это может занять несколько секунд</div>
+    </div>
+
+    <div class="result hidden" id="result">
+        <div class="images">
+            <div class="image-box">
+                <p>📷 Оригинал</p>
+                <img id="originalImage">
+            </div>
+            <div class="image-box">
+                <p>🔍 Детекция морщин</p>
+                <img id="resultImage">
+            </div>
+        </div>
+
+        <div class="stats">
+            <h2>📊 Результаты анализа</h2>
+            <div class="progress">
+                <div id="wrinkleBar"></div>
+            </div>
+            <p id="wrinklePercent" style="color: white; font-size: clamp(1rem, 4.5vw, 1.2rem); text-align: center;"></p>
+        </div>
+
+        <div class="result-buttons">
+            <button class="new-btn" onclick="resetAnalysis()">🔄 Новый анализ</button>
+            <button class="save-btn" onclick="downloadResult()">💾 Сохранить результат</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentImageFile = null;
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            currentImageFile = file;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('previewImage').src = event.target.result;
+                document.getElementById('previewBox').classList.remove('hidden');
+                document.getElementById('analyzeBtn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('analyzeBtn').addEventListener('click', async function() {
+        if (!currentImageFile) return;
+
+        const formData = new FormData();
+        formData.append('file', currentImageFile);
+
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('analyzeBtn').disabled = true;
+
+        try {
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('result').classList.remove('hidden');
+
+            document.getElementById('originalImage').src = data.original;
+            document.getElementById('resultImage').src = data.result;
+            document.getElementById('wrinklePercent').innerHTML =
+                `📊 Уровень морщин: <strong style="color: #10b981; font-size: clamp(1.2rem, 5vw, 1.5rem);">${data.wrinkle_percent.toFixed(2)}%</strong>`;
+            document.getElementById('wrinkleBar').style.width = data.wrinkle_percent + '%';
+        } catch (err) {
+            alert('Ошибка при анализе');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('analyzeBtn').disabled = false;
+        }
+    });
+
+    function resetAnalysis() {
+        document.getElementById('result').classList.add('hidden');
+        document.getElementById('previewBox').classList.add('hidden');
+        document.getElementById('fileInput').value = '';
+        currentImageFile = null;
+        document.getElementById('analyzeBtn').disabled = true;
+    }
+
+    function downloadResult() {
+        const link = document.createElement('a');
+        link.download = 'skin_analysis_result.png';
+        link.href = document.getElementById('resultImage').src;
+        link.click();
+    }
+</script>
+</body>
+</html>
